@@ -1,0 +1,104 @@
+docker volume create jenkins-data
+
+
+docker run -d --name jenkins -p 8080:8080 -p 50000:50000 -v jenkins-data:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins:lts
+
+
+
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+
+
+Open: http://localhost:8080
+Enter password
+Install suggested plugins
+Create admin user
+
+
+
+docker exec -u root jenkins bash -c "apt-get update && apt-get install -y docker.io"
+docker exec -u root jenkins usermod -aG docker jenkins
+docker restart Jenkins
+
+
+Go to Jenkins Dashboard
+Click New Item → Pipeline → Name: exp5
+
+
+
+
+Create a file named Jenkinsfile in your repo:
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "myapp"
+        DOCKER_HUB_USER = "venu1214"   // change if needed
+    }
+
+    stages {
+
+        stage('Clone Code') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/leodas12345/exp4.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_HUB_USER/$IMAGE_NAME:latest .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $DOCKER_HUB_USER/$IMAGE_NAME:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                    docker stop myapp || true
+                    docker rm myapp || true
+                    docker run -d -p 5000:5000 --name myapp $DOCKER_HUB_USER/$IMAGE_NAME:latest
+                '''
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+Go to: Manage Jenkins → Credentials
+Add:
+Username: Docker Hub username
+Password: Access Token
+ID: dockerhub-creds
+
+
+
+Click Build Now
+Check Console Output
+
+
+
+
+docker ps
+
+
+http://localhost:5000
