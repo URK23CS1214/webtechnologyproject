@@ -1,0 +1,64 @@
+EXP4 ------------------------------------------------------------------
+
+Repo → Settings → Secrets and variables → Actions → New repository secret:
+DOCKER_USERNAME — your Docker Hub username
+DOCKER_PASSWORD — your Docker Hub access token
+
+
+app.py-----------------------------
+from flask import Flask
+app = Flask(__name__)
+
+
+@app.route('/')
+def home():
+    return "Hello from docker"
+if __name__ =="__main__":
+    app.run(host='0.0.0.0', port = 5000)
+
+
+Dockerfile---------------------------
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+
+
+requirements.txt---------------------
+flask
+
+
+.github/workflows/docker-publish.yml----------
+
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/python-app:${{ github.sha }} .
+
+      - name: Push to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/python-app:${{ github.sha }}
+
+
+
+push it to GitHub and go to actions tab
