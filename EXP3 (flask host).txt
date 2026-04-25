@@ -1,0 +1,62 @@
+EXP3 ----------------------------------------------------------------
+
+command:  pip install flask
+app.py---------
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+students = {}
+next_id = 1
+
+# Root route (prevents 404)
+@app.route('/')
+def home():
+    return "Student API running"
+
+# Add student
+@app.route('/students', methods=['POST'])
+def add_student():
+    global next_id
+    data = request.get_json()
+
+    student = {
+        "id": next_id,
+        "name": data["name"],
+        "roll": data["roll"]
+    }
+
+    students[next_id] = student
+    next_id += 1
+
+    return jsonify(student)
+
+# Delete student
+@app.route('/students/<int:sid>', methods=['DELETE'])
+def delete_student(sid):
+    if sid in students:
+        students.pop(sid)
+        return jsonify({"message": "Deleted"})
+    return jsonify({"error": "Not found"}), 404
+
+# (Optional but useful)
+@app.route('/students', methods=['GET'])
+def get_students():
+    return jsonify(list(students.values()))
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+Run and test------------
+pip install flask
+python app.py
+
+# Add a student
+curl -X POST http://localhost:5000/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","roll":"CS001"}'
+
+# List all students
+curl http://localhost:5000/students
